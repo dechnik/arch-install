@@ -17,7 +17,7 @@ GRUB_DISABLE_SUBMENU=y
 EOF
 
 if [ "${CRYPT}" = "yes" ]; then
-    echo 'GRUB_CMDLINE_LINUX_DEFAULT="cryptdevice='${DISK}'3:system' >> /mnt/etc/default/grub
+    echo 'GRUB_CMDLINE_LINUX_DEFAULT="cryptdevice='${DISK}'3:system"' >> /mnt/etc/default/grub
     echo 'GRUB_ENABLE_CRYPTODISK=y' >> /mnt/etc/default/grub
 else
     echo 'GRUB_CMDLINE_LINUX_DEFAULT=""' >> /mnt/etc/default/grub

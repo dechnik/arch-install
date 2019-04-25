@@ -18,5 +18,5 @@ ff02::3         ip6-allhosts
 # </header>
 EOF
 
-arch-chroot /mnt pacman -Sy --noconfirm NetworkManager
+arch-chroot /mnt pacman -Sy --noconfirm networkmanager
 arch-chroot /mnt systemctl enable NetworkManager
