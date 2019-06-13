@@ -14,7 +14,7 @@ esac done
 error() { clear; printf "ERROR:\\n%s\\n" "$1"; exit;}
 
 confirmation() {\
-    dialog --title "Arch install" --yes-label "Continue" --no-label "Abort" --yesno "Options selected:\\n\\nDisk: \"$DISK\"\\nEncyption: \"$CRYPT\"\\n\\nPress <Continue> if you want to begin!" 13 60 || { clear; exit; }
+    dialog --title "Arch install" --yes-label "Continue" --no-label "Abort" --yesno "Options selected:\\n\\nDisk: \"$DISK\"\\nEncyption: \"$CRYPT\"\\n\\nPress <Continue> if you want to begin. Script will erase all data on disk \"$DISK\"!!!" 13 60 || { clear; exit; }
 	}
 
 getcryptpass() { \
@@ -29,14 +29,14 @@ getcryptpass() { \
 partedsetup() { \
 	dialog --title "Arch install" --infobox "Preparing partitions" 6 70
 	CMD="parted ${DISK} --align optimal --script --machine --"
-	dd bs=1M count=4 status=none if=/dev/zero of=${DISK} oflag=sync >/dev/null 2>&1
-	${CMD} mklabel gpt >/dev/null 2>&1
-	${CMD} unit MiB mkpart bios 1 2 name 1 "BIOS" set 1 bios_grub on >/dev/null 2>&1
-	${CMD} unit MiB mkpart boot 2 514 name 2 "Boot" set 2 boot on set 2 esp on >/dev/null 2>&1
-	${CMD} unit MiB mkpart system 514 -1 >/dev/null 2>&1
-	dd if=/dev/zero bs=1M count=1 of=${DISK}1 oflag=sync status=none >/dev/null 2>&1
-    dd if=/dev/zero bs=1M count=1 of=${DISK}2 oflag=sync status=none >/dev/null 2>&1
-    dd if=/dev/zero bs=1M count=16 of=${DISK}3 oflag=sync status=none >/dev/null 2>&1
+	dd bs=1M count=4 status=none if=/dev/zero of=${DISK} oflag=sync
+	${CMD} mklabel gpt
+	${CMD} unit MiB mkpart bios 1 2 name 1 "BIOS" set 1 bios_grub on
+	${CMD} unit MiB mkpart boot 2 514 name 2 "Boot" set 2 boot on set 2 esp on
+	${CMD} unit MiB mkpart system 514 -1
+	dd if=/dev/zero bs=1M count=1 of=${DISK}1 oflag=sync status=none
+    dd if=/dev/zero bs=1M count=1 of=${DISK}2 oflag=sync status=none
+    dd if=/dev/zero bs=1M count=16 of=${DISK}3 oflag=sync status=none
 	mkfs.vfat -F 32 -n EFI ${DISK}2 >/dev/null 2>&1
 	systemctl start lvm2-lvmetad.service >/dev/null 2>&1
     if [ "${CRYPT}" = "yes" ]; then
@@ -59,10 +59,20 @@ partedsetup() { \
 	sync >/dev/null 2>&1
 	unset pass1 pass2 ;}
 
+mountsetup() { \
+	dialog --title "Arch install" --infobox "Mounting partitions" 6 70
+	mount -o defaults,discard,noatime /dev/mapper/system-root /mnt
+    swapon /dev/mapper/system-swap
+    mkdir -p /mnt/boot
+    mount ${DISK}2 /mnt/boot
+	}
+
 confirmation
 
 [ "$CRYPT" = "yes" ] && getcryptpass
 
 partedsetup
+
+mountsetup
 
 clear
