@@ -29,43 +29,58 @@ getcryptpass() { \
 partedsetup() { \
 	dialog --title "Arch install" --infobox "Preparing partitions" 6 70
 	CMD="parted ${DISK} --align optimal --script --machine --"
-	dd bs=1M count=4 status=none if=/dev/zero of=${DISK} oflag=sync
-	${CMD} mklabel gpt
-	${CMD} unit MiB mkpart bios 1 2 name 1 "BIOS" set 1 bios_grub on
-	${CMD} unit MiB mkpart boot 2 514 name 2 "Boot" set 2 boot on set 2 esp on
-	${CMD} unit MiB mkpart system 514 -1
-	dd if=/dev/zero bs=1M count=1 of=${DISK}1 oflag=sync status=none
-    dd if=/dev/zero bs=1M count=1 of=${DISK}2 oflag=sync status=none
-    dd if=/dev/zero bs=1M count=16 of=${DISK}3 oflag=sync status=none
-	mkfs.vfat -F 32 -n EFI ${DISK}2 >/dev/null 2>&1
-	systemctl start lvm2-lvmetad.service >/dev/null 2>&1
+	dd bs=1M count=4 status=none if=/dev/zero of=${DISK} oflag=sync > ailog.txt 2>&1
+	${CMD} mklabel gpt > ailog.txt 2>&1
+	${CMD} unit MiB mkpart bios 1 2 name 1 "BIOS" set 1 bios_grub on > ailog.txt 2>&1
+	${CMD} unit MiB mkpart boot 2 514 name 2 "Boot" set 2 boot on set 2 esp on > ailog.txt 2>&1
+	${CMD} unit MiB mkpart system 514 -1 > ailog.txt 2>&1
+	dd if=/dev/zero bs=1M count=1 of=${DISK}1 oflag=sync status=none > ailog.txt 2>&1
+    dd if=/dev/zero bs=1M count=1 of=${DISK}2 oflag=sync status=none > ailog.txt 2>&1
+    dd if=/dev/zero bs=1M count=16 of=${DISK}3 oflag=sync status=none > ailog.txt 2>&1
+	mkfs.vfat -F 32 -n EFI ${DISK}2 > ailog.txt 2>&1
+	systemctl start lvm2-lvmetad.service > ailog.txt 2>&1
     if [ "${CRYPT}" = "yes" ]; then
 		echo $pass1 | cryptsetup --verbose --cipher aes-xts-plain64 \
 			--key-size 512 --hash sha512 --iter-time 2500 --use-urandom \
-			--force-password luksFormat ${DISK}3 >/dev/null 2>&1
-		echo $pass1 | cryptsetup luksOpen --allow-discards ${DISK}3 crypt >/dev/null 2>&1
-		pvcreate -ff -y --zero y /dev/mapper/crypt >/dev/null 2>&1
-		vgcreate system /dev/mapper/crypt >/dev/null 2>&1
+			--force-password luksFormat ${DISK}3 > ailog.txt 2>&1
+		echo $pass1 | cryptsetup luksOpen --allow-discards ${DISK}3 crypt > ailog.txt 2>&1
+		pvcreate -ff -y --zero y /dev/mapper/crypt > ailog.txt 2>&1
+		vgcreate system /dev/mapper/crypt > ailog.txt 2>&1
 	else
-		pvcreate -ff -y --zero y ${DISK}3 >/dev/null 2>&1
-		vgcreate system ${DISK}3 >/dev/null 2>&1
+		pvcreate -ff -y --zero y ${DISK}3 > ailog.txt 2>&1
+		vgcreate system ${DISK}3 > ailog.txt 2>&1
 	fi
 
-	lvcreate -L 4G --wipesignatures y -n swap system >/dev/null 2>&1
-	lvcreate -l 100%FREE --wipesignatures y -n root system >/dev/null 2>&1
-	lvscan >/dev/null 2>&1
-	mkfs.ext4 -L root /dev/mapper/system-root >/dev/null 2>&1
-	mkswap -f /dev/mapper/system-swap >/dev/null 2>&1
-	sync >/dev/null 2>&1
+	lvcreate -L 4G --wipesignatures y -n swap system > ailog.txt 2>&1
+	lvcreate -l 100%FREE --wipesignatures y -n root system > ailog.txt 2>&1
+	lvscan > ailog.txt 2>&1
+	mkfs.ext4 -L root /dev/mapper/system-root > ailog.txt 2>&1
+	mkswap -f /dev/mapper/system-swap > ailog.txt 2>&1
+	sync > ailog.txt 2>&1
 	unset pass1 pass2 ;}
 
 mountsetup() { \
 	dialog --title "Arch install" --infobox "Mounting partitions" 6 70
-	mount -o defaults,discard,noatime /dev/mapper/system-root /mnt
-    swapon /dev/mapper/system-swap
-    mkdir -p /mnt/boot
-    mount ${DISK}2 /mnt/boot
+	mount -o defaults,discard,noatime /dev/mapper/system-root /mnt > ailog.txt 2>&1
+    swapon /dev/mapper/system-swap > ailog.txt 2>&1
+    mkdir -p /mnt/boot > ailog.txt 2>&1
+    mount ${DISK}2 /mnt/boot > ailog.txt 2>&1
 	}
+
+basesystem() { \
+	dialog --title "Arch install" --infobox "Installing reflector" 6 70
+    pacman -Sy --noconfirm reflector > ailog.txt 2>&1
+
+	dialog --title "Arch install" --infobox "Updating mirrorlist" 6 70
+    reflector -c "Poland" -f 3 -l 3 --verbose --save /etc/pacman.d/mirrorlist > ailog.txt 2>&1
+
+	dialog --title "Arch install" --infobox "Installing base system" 6 70
+    pacstrap /mnt base base-devel efitools grub efibootmgr lvm2 cryptsetup parted > ailog.txt 2>&1
+
+    genfstab -U -p /mnt >> /mnt/etc/fstab > ailog.txt 2>&1
+    cp /etc/resolv.conf /mnt/etc/resolv.conf > ailog.txt 2>&1
+    cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist > ailog.txt 2>&1
+    }
 
 confirmation
 
@@ -74,5 +89,7 @@ confirmation
 partedsetup
 
 mountsetup
+
+basesystem
 
 clear
