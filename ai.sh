@@ -75,11 +75,41 @@ basesystem() { \
     reflector -c "Poland" -f 3 -l 3 --verbose --save /etc/pacman.d/mirrorlist > ailog.txt 2>&1
 
 	dialog --title "Arch install" --infobox "Installing base system" 6 70
-    pacstrap /mnt base base-devel efitools grub efibootmgr lvm2 cryptsetup parted > ailog.txt 2>&1
+    pacstrap /mnt base base-devel efitools grub efibootmgr lvm2 cryptsetup parted mkinitcpio > ailog.txt 2>&1
 
     genfstab -U -p /mnt >> /mnt/etc/fstab > ailog.txt 2>&1
     cp /etc/resolv.conf /mnt/etc/resolv.conf > ailog.txt 2>&1
     cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist > ailog.txt 2>&1
+    }
+
+timezone() {\
+	dialog --title "Arch install" --infobox "Setting up timezone" 6 70
+    arch-chroot /mnt ln -sf /usr/share/zoneinfo/Europe/Warsaw /etc/localtime
+    arch-chroot /mnt hwclock --systohc --utc
+
+    cat << EOF > /mnt/etc/locale.gen
+    en_US.UTF-8 UTF-8
+    pl_PL.UTF-8 UTF-8
+    EOF
+
+    arch-chroot /mnt locale-gen
+
+    cat << EOF > /mnt/etc/locale.conf
+    LANG=en_US.UTF-8
+    LC_CTYPE="pl_PL.UTF-8"
+    LC_NUMERIC="pl_PL.UTF-8"
+    LC_TIME="pl_PL.UTF-8"
+    LC_COLLATE="pl_PL.UTF-8"
+    LC_MONETARY="pl_PL.UTF-8"
+    LC_MESSAGES=
+    LC_PAPER="pl_PL.UTF-8"
+    LC_NAME="pl_PL.UTF-8"
+    LC_ADDRESS="pl_PL.UTF-8"
+    LC_TELEPHONE="pl_PL.UTF-8"
+    LC_MEASUREMENT="pl_PL.UTF-8"
+    LC_IDENTIFICATION="pl_PL.UTF-8"
+    LC_ALL=
+    EOF
     }
 
 confirmation
@@ -91,5 +121,7 @@ partedsetup
 mountsetup
 
 basesystem
+
+timezone
 
 clear
